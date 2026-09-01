@@ -1,251 +1,198 @@
-import 'package:flutter/material.dart';
+import 'dart:async';
+import 'dart:convert';
+
+import 'package:mqtt_client/mqtt_client.dart';
+import 'package:mqtt_client/mqtt_server_client.dart';
 
 import '../models/bms_data.dart';
-import '../services/bms_data_service.dart';
 
-class BmsPage extends StatefulWidget {
-  const BmsPage({super.key});
+class BmsDataService {
+  // Raspberry Pi MQTT broker.
+  //
+  // IMPORTANT:
+  // This is temporary until the Pi team gives the Raspberry Pi
+  // a permanent/static IP address.
+  static const String brokerAddress = '192.168.8.2';
+  static const int brokerPort = 1883;
 
-  @override
-  State<BmsPage> createState() => _BmsPageState();
-}
+  // pylontec.py publishes the Pylontech BMS data underneath
+  // solar/battery/.
+  static const String bmsTopic = 'solar/battery/#';
 
-class _BmsPageState extends State<BmsPage> {
-  final BmsDataService _bmsService = BmsDataService();
+  late final MqttServerClient _client;
 
-  bool _isConnecting = true;
-  String? _connectionError;
+  final StreamController<BmsData> _dataController =
+  StreamController<BmsData>.broadcast();
 
-  @override
-  void initState() {
-    super.initState();
-    _connectToBms();
-  }
+  // Latest known values.
+  //
+  // The BMS sends its information in multiple MQTT messages,
+  // so we keep the newest value of every field.
+  BmsData _currentData = const BmsData(
+    stateOfCharge: 0.0,
+    stateOfHealth: 0.0,
+    batteryVoltage: 0.0,
+    batteryCurrent: 0.0,
+    batteryTemperature: 0.0,
+  );
 
-  Future<void> _connectToBms() async {
-    setState(() {
-      _isConnecting = true;
-      _connectionError = null;
-    });
+  bool _initialized = false;
+
+  Stream<BmsData> get dataStream => _dataController.stream;
+
+  BmsData get currentData => _currentData;
+
+  Future<void> connect() async {
+    if (_initialized &&
+        _client.connectionStatus?.state ==
+            MqttConnectionState.connected) {
+      return;
+    }
+
+    final clientId =
+        'flutter_bms_${DateTime.now().millisecondsSinceEpoch}';
+
+    _client = MqttServerClient.withPort(
+      brokerAddress,
+      clientId,
+      brokerPort,
+    );
+
+    _client.logging(on: false);
+    _client.keepAlivePeriod = 20;
+
+    _client.onConnected = () {
+      print('BMS MQTT connected');
+    };
+
+    _client.onDisconnected = () {
+      print('BMS MQTT disconnected');
+    };
+
+    _client.connectionMessage = MqttConnectMessage()
+        .withClientIdentifier(clientId)
+        .startClean()
+        .withWillQos(MqttQos.atMostOnce);
 
     try {
-      await _bmsService.connect();
-
-      if (!mounted) return;
-
-      setState(() {
-        _isConnecting = false;
-      });
+      await _client.connect();
     } catch (e) {
-      if (!mounted) return;
-
-      setState(() {
-        _isConnecting = false;
-        _connectionError = e.toString();
-      });
+      _client.disconnect();
+      throw Exception('Could not connect to Raspberry Pi MQTT: $e');
     }
-  }
 
-  @override
-  void dispose() {
-    _bmsService.dispose();
-    super.dispose();
-  }
+    if (_client.connectionStatus?.state !=
+        MqttConnectionState.connected) {
+      throw Exception(
+        'MQTT connection failed: ${_client.connectionStatus}',
+      );
+    }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF25262C),
+    _initialized = true;
 
-      appBar: AppBar(
-        backgroundColor: const Color(0xFF465EAA),
-        title: const Text(
-          'BMS Data',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        actions: [
-          IconButton(
-            onPressed: _connectToBms,
-            icon: const Icon(Icons.refresh),
-          ),
-        ],
-      ),
-
-      body: _buildBody(),
+    // Listen to every Pylontech battery MQTT message.
+    _client.subscribe(
+      bmsTopic,
+      MqttQos.atMostOnce,
     );
-  }
 
-  Widget _buildBody() {
-    if (_isConnecting) {
-      return const Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            CircularProgressIndicator(),
-            SizedBox(height: 16),
-            Text(
-              'Connecting to BMS...',
-              style: TextStyle(color: Colors.white),
-            ),
-          ],
-        ),
-      );
-    }
-
-    if (_connectionError != null) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.error_outline,
-                color: Colors.redAccent,
-                size: 48,
-              ),
-              const SizedBox(height: 16),
-              const Text(
-                'Could not connect to BMS',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Text(
-                _connectionError!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white70),
-              ),
-              const SizedBox(height: 20),
-              ElevatedButton(
-                onPressed: _connectToBms,
-                child: const Text('Try Again'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-
-    return StreamBuilder<BmsData>(
-      stream: _bmsService.dataStream,
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(
-            child: Text(
-              'Connected. Waiting for BMS data...',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 18,
-              ),
-            ),
-          );
+    _client.updates?.listen(
+          (List<MqttReceivedMessage<MqttMessage?>> messages) {
+        if (messages.isEmpty) {
+          return;
         }
 
-        final data = snapshot.data!;
+        final message = messages.first.payload;
 
-        return ListView(
-          padding: const EdgeInsets.all(16.0),
-          children: [
-            BmsDataCard(
-              label: 'Battery Voltage',
-              value: '${data.batteryVoltage.toStringAsFixed(1)} V',
-              icon: Icons.battery_full,
-            ),
+        if (message is! MqttPublishMessage) {
+          return;
+        }
 
-            const SizedBox(height: 12),
-
-            BmsDataCard(
-              label: 'Battery Current',
-              value: '${data.batteryCurrent.toStringAsFixed(1)} A',
-              icon: Icons.electric_bolt,
-            ),
-
-            const SizedBox(height: 12),
-
-            BmsDataCard(
-              label: 'State of Charge',
-              value: '${data.stateOfCharge.toStringAsFixed(1)}%',
-              icon: Icons.battery_charging_full,
-            ),
-
-            const SizedBox(height: 12),
-
-            BmsDataCard(
-              label: 'State of Health',
-              value: '${data.stateOfHealth.toStringAsFixed(1)}%',
-              icon: Icons.favorite,
-            ),
-
-            const SizedBox(height: 12),
-
-            BmsDataCard(
-              label: 'Battery Temperature',
-              value: '${data.batteryTemperature.toStringAsFixed(1)} °C',
-              icon: Icons.thermostat,
-            ),
-          ],
+        final payload =
+        MqttPublishPayload.bytesToStringAsString(
+          message.payload.message,
         );
+
+        _processBmsMessage(payload);
       },
     );
   }
-}
 
-class BmsDataCard extends StatelessWidget {
-  final String label;
-  final String value;
-  final IconData icon;
+  void _processBmsMessage(String payload) {
+    try {
+      final dynamic decoded = jsonDecode(payload);
 
-  const BmsDataCard({
-    super.key,
-    required this.label,
-    required this.value,
-    required this.icon,
-  });
+      if (decoded is! Map<String, dynamic>) {
+        return;
+      }
 
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(16),
+      // Keep the old value if this particular MQTT message
+      // does not contain that BMS measurement.
+      final double soc =
+          _toDouble(decoded['SOC']) ??
+              _currentData.stateOfCharge;
 
-      decoration: BoxDecoration(
-        color: const Color(0xFF30313A),
-        borderRadius: BorderRadius.circular(10),
-      ),
+      final double soh =
+          _toDouble(decoded['SOH']) ??
+              _currentData.stateOfHealth;
 
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            size: 36,
-            color: const Color(0xFF25C99A),
-          ),
+      final double voltage =
+          _toDouble(decoded['Battery_Voltage']) ??
+              _currentData.batteryVoltage;
 
-          const SizedBox(width: 16),
+      final double current =
+          _toDouble(decoded['Battery_Current']) ??
+              _currentData.batteryCurrent;
 
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 18,
-                color: Colors.white,
-              ),
-            ),
-          ),
+      final double temperature =
+          _toDouble(decoded['Battery_Temperature']) ??
+              _currentData.batteryTemperature;
 
-          Text(
-            value,
-            style: const TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFFB9FF26),
-            ),
-          ),
-        ],
-      ),
-    );
+      _currentData = BmsData(
+        stateOfCharge: soc,
+        stateOfHealth: soh,
+        batteryVoltage: voltage,
+        batteryCurrent: current,
+        batteryTemperature: temperature,
+      );
+
+      // Send the newest complete BMS state to the Flutter UI.
+      _dataController.add(_currentData);
+
+      print(
+        'BMS update: '
+            'SOC=$soc%, '
+            'SOH=$soh%, '
+            'Voltage=$voltage V, '
+            'Current=$current A, '
+            'Temperature=$temperature C',
+      );
+    } catch (e) {
+      print('Could not decode BMS MQTT message: $e');
+    }
+  }
+
+  double? _toDouble(dynamic value) {
+    if (value == null) {
+      return null;
+    }
+
+    if (value is num) {
+      return value.toDouble();
+    }
+
+    return double.tryParse(value.toString());
+  }
+
+  void disconnect() {
+    if (_initialized) {
+      _client.disconnect();
+      _initialized = false;
+    }
+  }
+
+  void dispose() {
+    disconnect();
+    _dataController.close();
   }
 }
