@@ -7,3 +7,7 @@ This will make it easier for progress to be tracked and reverted if necessary, a
 
 Contains data taken directly from https://www.kaggle.com/datasets/orvile/household-energy-consumption-with-weather-data/data .
 No changes made to the data.
+
+**Added 9/4/26:** `Energy_weather_090426.zip`
+
+Contains certain columns from the previous file: date, active power, current, voltage, apparent power, power factor, temperature, "feels like" temperature, minimum temperature, maximum temperature, and humidity.
