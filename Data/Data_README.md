@@ -11,3 +11,7 @@ No changes made to the data.
 **Added 9/4/26:** `Energy_weather_090426.zip`
 
 Contains certain columns from the previous file: date, active power, current, voltage, apparent power, power factor, temperature, "feels like" temperature, minimum temperature, maximum temperature, and humidity.
+
+**Added 9/7/26:** `Energy_weather_090726.csv`
+
+Contains data from previous file but downsampled to 15 minute intervals. Leading rows have been removed to ensure data is in 15 minute increments.
