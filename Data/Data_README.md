@@ -15,3 +15,7 @@ Contains certain columns from the previous file: date, active power, current, vo
 **Added 9/7/26:** `Energy_weather_090726.csv`
 
 Contains data from previous file but downsampled to 15 minute intervals. Leading rows have been removed to ensure data is in 15 minute increments.
+
+**Added 9/8/26:** `Energy_weather_090826.csv`
+
+Contains data from `Energy_weather_090426.zip` but with NaN values filled using interpolation, then resampled to 15 minute increments.
