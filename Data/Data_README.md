@@ -19,3 +19,8 @@ Contains data from previous file but downsampled to 15 minute intervals. Leading
 **Added 9/8/26:** `Energy_weather_090826.csv`
 
 Contains data from `Energy_weather_090426.zip` but with NaN values filled using interpolation, then resampled to 15 minute increments.
+
+**Added 9/9/26:** `Energy_weather_090926.csv`
+
+Contains data from `Energy_weather_090826.csv` with only date and active power data columns, with added calculated dew point temperature data.
+The script used to edit and plot this data was `data_plotting.m`.
