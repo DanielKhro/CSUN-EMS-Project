@@ -1,0 +1,7 @@
+{
+    "address": "18111 Nordhoff St, Northridge, CA 91330",
+    "lat": 34.2356,
+    "lon": -118.5278,
+    "stationURL": "https://api.weather.gov/gridpoints/LOX/146,55/stations",
+    "stationID": "KVNY"
+}
