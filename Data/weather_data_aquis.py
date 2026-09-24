@@ -1,5 +1,7 @@
 import requests
 import json
+import time
+import datetime as dt
 
 def get_station_list():
     with open("NWSdata.json", "r") as file: #Open JSON containing permanent data
@@ -40,21 +42,6 @@ def get_stationID():
     else:
         return None
 
-# data = {
-#     "address": "18111 Nordhoff St, Northridge, CA 91330",
-#     "lat": 34.2356,
-#     "lon": -118.5278,
-#     "stationURL": "https://api.weather.gov/gridpoints/LOX/146,55/stations",
-#     "stationID": "KVNY"
-# }
-# with open("NWSdata.json", "w") as f:
-#     json.dump(data, f)
-
-stationID = get_stationID()
-if stationID is not None:
-   print(f"Station ID: {stationID}")
-else:
-   print("Failed to retrieve data.")
 
 def get_dewPoint():
     with open("NWSdata.json", "r") as file: #Open JSON containing permanent data
@@ -71,9 +58,29 @@ def get_dewPoint():
     else:
         return None
 
-dewPoint = get_dewPoint()
-if dewPoint is not None:
-   print(f"Current dew point: {dewPoint} DegC")
-else:
-   print("Failed to retrieve data.")
 
+def main():
+    #Bulk of the code
+    get_station_list()
+    get_stationID()
+
+    try:
+        while True:
+            # This loop will keep script running
+            dewPointVal = get_dewPoint()
+            currentTime = dt.datetime.now().isoformat(timespec='hours')
+
+            dewMeas = [currentTime, dewPointVal]
+
+            with open('dewPointVals.csv','a') as fd:
+                fd.write(dewMeas)
+
+            time.sleep(3600)  # Sleep to prevent high CPU usage
+    except KeyboardInterrupt:
+        print("Shutting down...")
+    finally:
+        #What to do when loop stops
+        print("Ending weather data loop.")
+
+if __name__ == "__main__":
+    main()
