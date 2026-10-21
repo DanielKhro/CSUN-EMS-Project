@@ -24,6 +24,9 @@ df.drop(Timestamp_list, inplace = True)
 #print(df.head())
 df = df.interpolate()
 
+contains_nan = df.isnull().values.any()
+print(contains_nan)
+
 window_size = 60 #Takes into account past 60 minutes
 i = 0
 
@@ -46,11 +49,16 @@ while i < df.index.size - window_size + 1:
         if (abs(y - mean_window)) > 3*dev_window:
             df.iloc[[i+j],[0]] = np.nan
         j = j + 1
+
+    print(i)
+    
     i = i + 1
     
 
-df = df.interpolate()
+df = df.ffill()
 
+contains_nan = df.isnull().values.any()
+print(contains_nan)
 
 
 #Resample to 15 minute intervals
