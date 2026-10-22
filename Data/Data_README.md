@@ -24,3 +24,9 @@ Contains data from `Energy_weather_090426.zip` but with NaN values filled using 
 
 Contains data from `Energy_weather_090826.csv` with only date and active power data columns, with added calculated dew point temperature data.
 The script used to edit and plot this data was `data_plotting.m`.
+
+**Added 10/20/26:**
+`CSV Editing File 1.p` has been edited to remove outliers, defined as a value that has a z score more than 3 within a 60 minute window.
+`energy_weather_102026_1.csv` is the original file (`Energy_weather_090426.zip`), with outliers removed, resampled to 15 minute increments.
+`energy_weather_102026_2.csv` is the previous file with extraneous data removed.
+`energy_weather_102026_3.csv` is the previous file with time data added.
