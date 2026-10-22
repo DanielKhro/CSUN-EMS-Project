@@ -60,7 +60,7 @@ df = df.ffill()
 contains_nan = df.isnull().values.any()
 print(contains_nan)
 
-
+#wait
 #Resample to 15 minute intervals
 df = df.resample('15min', label = 'right',origin = "start").mean()
 print(df.head(n = 10))

@@ -89,7 +89,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--mqtt-port", type=int, default=1883)
     parser.add_argument(
         "--mqtt-topic",
-        default="prediction/mode_select",
+        default="relay___mode/mode_select",
         help="MQTT topic consumed by the Raspberry Pi relay controller.",
     )
     return parser.parse_args()
