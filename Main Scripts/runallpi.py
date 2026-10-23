@@ -10,13 +10,29 @@ from pathlib import Path
 PROJECT_DIR = Path(__file__).resolve().parent
 LOG_DIR = PROJECT_DIR / "logs"
 
-# These programs are continuous services. They are started in this order but
-# run together; run_all.py does not wait for one to finish before starting the
-# next one.
-SERVICES = [
+#DIRECTORY may need to be edited Delete comment if it works
+GRU_DIR = PROJECT_DIR / "jetson_gru_deployment"
+GRU_SCRIPT = GRU_DIR / "run_gru_replay.py"
+GRU_PYTHON = GRU_DIR / ".venv" / "bin" / "python"
+
+# These Raspberry Pi programs are continuous services. They are started in
+# this order but run together; this launcher does not wait for one to finish
+# before starting the next one.
+PI_SERVICES = [
     "pylontech.py",
     "pzem _2_name.py",
     "main_script_spring25.py",
+]
+
+GRU_ARGUMENTS = [
+    "--today",
+    "--match-current-time",
+    "--max-steps",
+    "96",
+    "--live",
+    "--publish",
+    "--mqtt-broker",
+    "127.0.0.1",
 ]
 
 STARTUP_DELAY_SECONDS = 2
@@ -52,11 +68,22 @@ def stop_services(processes: list[tuple[str, subprocess.Popen]]) -> None:
 
 
 def main() -> int:
-    missing = [name for name in SERVICES if not (PROJECT_DIR / name).is_file()]
+    missing = [
+        PROJECT_DIR / name
+        for name in PI_SERVICES
+        if not (PROJECT_DIR / name).is_file()
+    ]
+
+    if not GRU_SCRIPT.is_file():
+        missing.append(GRU_SCRIPT)
+    if not GRU_PYTHON.is_file():
+        missing.append(GRU_PYTHON)
+
     if missing:
-        print("Missing required script(s):")
-        for name in missing:
-            print(f"  - {PROJECT_DIR / name}")
+        print("Missing required file(s):")
+        for path in missing:
+            print(f"  - {path}")
+        print("Edit GRU_DIR near the top of runallpi.py if its folder moved.")
         return 1
 
     if not mqtt_is_available():
@@ -70,17 +97,36 @@ def main() -> int:
     processes: list[tuple[str, subprocess.Popen]] = []
     log_files = []
 
+    # Each entry contains its display name, command, and working directory.
+    # The Pi services use the same interpreter that launched runallpi.py. The
+    # GRU uses its own .venv interpreter, which replaces the need to run
+    # "source .venv/bin/activate" manually.
+    service_commands = [
+        (
+            name,
+            [sys.executable, "-u", str(PROJECT_DIR / name)],
+            PROJECT_DIR,
+        )
+        for name in PI_SERVICES
+    ]
+    service_commands.append(
+        (
+            "run_gru_replay.py",
+            [str(GRU_PYTHON), "-u", str(GRU_SCRIPT), *GRU_ARGUMENTS],
+            GRU_DIR,
+        )
+    )
+
     try:
-        for name in SERVICES:
-            script_path = PROJECT_DIR / name
-            log_path = LOG_DIR / f"{script_path.stem}.log"
+        for name, command, working_directory in service_commands:
+            log_path = LOG_DIR / f"{Path(name).stem}.log"
             log_file = log_path.open("a", encoding="utf-8", buffering=1)
             log_files.append(log_file)
 
             print(f"Starting {name}...")
             process = subprocess.Popen(
-                [sys.executable, "-u", str(script_path)],
-                cwd=PROJECT_DIR,
+                command,
+                cwd=working_directory,
                 stdout=log_file,
                 stderr=subprocess.STDOUT,
                 text=True,
