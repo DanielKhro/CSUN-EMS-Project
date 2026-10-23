@@ -1,0 +1,93 @@
+VERSION "Pylontech-compatible CAN - Aolithium observed frames"
+
+NS_ :
+    NS_DESC_
+    CM_
+    BA_DEF_
+    BA_
+    VAL_
+    CAT_DEF_
+    CAT_
+    FILTER
+    BA_DEF_DEF_
+    EV_DATA_
+    ENVVAR_DATA_
+    SGTYPE_
+    SGTYPE_VAL_
+    BA_DEF_SGTYPE_
+    BA_SGTYPE_
+    SIG_TYPE_REF_
+    VAL_TABLE_
+    SIG_GROUP_
+    SIG_VALTYPE_
+    SIGTYPE_VALTYPE_
+    BO_TX_BU_
+    BA_DEF_REL_
+    BA_REL_
+    BA_DEF_DEF_REL_
+    BU_SG_REL_
+    BU_EV_REL_
+    BU_BO_REL_
+    SG_MUL_VAL_
+
+BS_:
+
+BU_: BMS
+
+BO_ 849 BMS_DC_Parameter: 8 BMS
+ SG_ Battery_Charge_Voltage       : 0|16@1+ (0.1,0) [0|65.5] "V" BMS
+ SG_ Charge_Current_Limitation    : 16|16@1- (0.1,0) [-3276.8|3276.7] "A" BMS
+ SG_ Discharge_Current_Limitation : 32|16@1- (0.1,0) [-3276.8|3276.7] "A" BMS
+ SG_ Low_Voltage_Limit            : 48|16@1+ (0.1,0) [0|65.5] "V" BMS
+
+BO_ 853 BMS_State: 6 BMS
+ SG_ SOC      : 0|16@1+ (1,0) [0|100] "%" BMS
+ SG_ SOH      : 16|16@1+ (1,0) [0|100] "%" BMS
+ SG_ Reserved : 32|16@1+ (1,0) [0|65535] "" BMS
+
+BO_ 854 BMS_Battery: 6 BMS
+ SG_ Battery_Voltage     : 0|16@1- (0.01,0) [0|65.5] "V" BMS
+ SG_ Battery_Current     : 16|16@1- (0.1,0) [-1000|1000] "A" BMS
+ SG_ Battery_Temperature : 32|16@1- (0.1,0) [-100|200] "degC" BMS
+
+BO_ 858 BMS_Alarm_Warn_Extended: 8 BMS
+ SG_ AlarmWarn_Raw : 0|64@1+ (1,0) [0|18446744073709551615] "" BMS
+
+BO_ 862 BMS_Manufacturer_ASCII: 5 BMS
+ SG_ Manufacturer_Byte1 : 0|8@1+ (1,0) [0|255] "" BMS
+ SG_ Manufacturer_Byte2 : 8|8@1+ (1,0) [0|255] "" BMS
+ SG_ Manufacturer_Byte3 : 16|8@1+ (1,0) [0|255] "" BMS
+ SG_ Manufacturer_Byte4 : 24|8@1+ (1,0) [0|255] "" BMS
+ SG_ Manufacturer_Byte5 : 32|8@1+ (1,0) [0|255] "" BMS
+
+BO_ 863 BMS_Info_35F: 4 BMS
+ SG_ Info_35F_Raw : 0|32@1+ (1,0) [0|4294967295] "" BMS
+
+BO_ 882 BMS_Info_372: 8 BMS
+ SG_ Info_372_Raw : 0|64@1+ (1,0) [0|18446744073709551615] "" BMS
+
+BO_ 883 BMS_Info_373: 8 BMS
+ SG_ Info_373_Raw : 0|64@1+ (1,0) [0|18446744073709551615] "" BMS
+
+BO_ 884 BMS_Label_374: 8 BMS
+ SG_ Label_374_Raw : 0|64@1+ (1,0) [0|18446744073709551615] "" BMS
+
+BO_ 885 BMS_Label_375: 8 BMS
+ SG_ Label_375_Raw : 0|64@1+ (1,0) [0|18446744073709551615] "" BMS
+
+BO_ 886 BMS_Label_376: 8 BMS
+ SG_ Label_376_Raw : 0|64@1+ (1,0) [0|18446744073709551615] "" BMS
+
+BO_ 887 BMS_Label_377: 8 BMS
+ SG_ Label_377_Raw : 0|64@1+ (1,0) [0|18446744073709551615] "" BMS
+
+BO_ 889 BMS_Info_379: 2 BMS
+ SG_ Info_379_Raw : 0|16@1+ (1,0) [0|65535] "" BMS
+
+CM_ "Tailored to the Aolithium battery CAN frames observed with candump on 2026-09-24. Known Pylontech-compatible signals are decoded; additional observed frames are preserved as raw values until their signal definitions are verified.";
+CM_ BO_ 858 "Observed as CAN 0x35A, 8 bytes. Protocol-family sources identify 0x35A as alarms/warnings, but bit definitions were not assumed here.";
+CM_ BO_ 862 "Observed payload 50 59 4C 4F 4E, ASCII 'PYLON'. Battery sends 5 bytes, unlike older Pylontech DBCs that expect 8 bytes.";
+CM_ BO_ 884 "Observed payload decodes as ASCII 'LOWEST74'. Stored raw until semantics are verified.";
+CM_ BO_ 885 "Observed payload decodes as ASCII 'HIGHEST '. Stored raw until semantics are verified.";
+CM_ BO_ 886 "Observed payload decodes as ASCII 'MIN_CELL'. Stored raw until semantics are verified.";
+CM_ BO_ 887 "Observed payload decodes as ASCII 'MAX_CELL'. Stored raw until semantics are verified.";
