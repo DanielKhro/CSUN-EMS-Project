@@ -10,18 +10,20 @@ from pathlib import Path
 PROJECT_DIR = Path(__file__).resolve().parent
 LOG_DIR = PROJECT_DIR / "logs"
 
-#DIRECTORY may need to be edited Delete comment if it works
+# EDIT THIS DIRECTORY if jetson_gru_deployment is not located directly inside
+# the Main Scripts folder that contains this runallpi.py file.
 GRU_DIR = PROJECT_DIR / "jetson_gru_deployment"
 GRU_SCRIPT = GRU_DIR / "run_gru_replay.py"
 GRU_PYTHON = GRU_DIR / ".venv" / "bin" / "python"
 
-# These Raspberry Pi programs are continuous services. They are started in
-# this order but run together; this launcher does not wait for one to finish
-# before starting the next one.
-PI_SERVICES = [
-    "pylontech.py",
-    "pzem _2_name.py",
-    "main_script_spring25.py",
+# These programs are continuous services. They are started in this order but
+# run together; run_all.py does not wait for one to finish before starting the
+# next one.
+SERVICES = [
+    "BMS_mqtt.py",
+    "ems_main.py",
+    "pzems_mqtt.py",
+    "hive_bridge.py",
 ]
 
 GRU_ARGUMENTS = [
@@ -70,7 +72,7 @@ def stop_services(processes: list[tuple[str, subprocess.Popen]]) -> None:
 def main() -> int:
     missing = [
         PROJECT_DIR / name
-        for name in PI_SERVICES
+        for name in SERVICES
         if not (PROJECT_DIR / name).is_file()
     ]
 
@@ -97,17 +99,16 @@ def main() -> int:
     processes: list[tuple[str, subprocess.Popen]] = []
     log_files = []
 
-    # Each entry contains its display name, command, and working directory.
-    # The Pi services use the same interpreter that launched runallpi.py. The
-    # GRU uses its own .venv interpreter, which replaces the need to run
-    # "source .venv/bin/activate" manually.
+    # The existing Pi services use the interpreter that launched runallpi.py.
+    # The GRU uses its own .venv Python directly, so no manual "source" command
+    # is necessary. Each service also receives the correct working directory.
     service_commands = [
         (
             name,
             [sys.executable, "-u", str(PROJECT_DIR / name)],
             PROJECT_DIR,
         )
-        for name in PI_SERVICES
+        for name in SERVICES
     ]
     service_commands.append(
         (
